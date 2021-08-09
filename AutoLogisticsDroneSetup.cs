@@ -16,7 +16,7 @@ namespace DSP_Mods
     {
         public const string pluginGuid = "gimbalhawk.dsp.autoshuttlesetup";
         public const string pluginName = "AutoShuttleSetup";
-        public const string pluginVersion = "1.0.2";
+        public const string pluginVersion = "1.1.0";
 
         public const int DRONE_ITEMID = 5001;
         public const int VESSEL_ITEMID = 5002;
@@ -41,78 +41,51 @@ namespace DSP_Mods
             s_logger = Logger;
         }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(PlayerAction_Build), "NotifyBuilt")]
-        public static void NotifyBuilt_Postfix(ref PlayerAction_Build __instance, int preObjId, int postObjId)
-        {
-            if (__instance == null)
-            {      
-                s_logger.LogInfo("Instance null?");
-				return;
+        [HarmonyPostfix, HarmonyPatch(typeof(PlanetTransport), "NewStationComponent")]
+        public static void NewStationComponent_PostFix(PlanetTransport __instance, int _entityId, int _pcId, PrefabDesc _desc)
+		{
+            var player = GameMain.mainPlayer;
+            if (player == null)
+			{
+                LogInfo("Couldn't find player");
+                return;
 			}
 
-            var factory = __instance.factory;
-            if (factory == null)
-            {
-                s_logger.LogInfo("Factory null?");
-                return;
-            }
-
-            var entity = __instance.factory.GetEntityData(postObjId);
-            var stationId = entity.stationId;
-            var player = __instance.player;
-
-            if (player == null)
-            {
-                s_logger.LogInfo("Player null?");
-                return;
-            }
-
-            var transport = factory.transport;
-            if (transport == null)
-            {
-                s_logger.LogInfo("Transport null?");
-                return;
-            }
-
-            var station = __instance.factory.transport.stationPool[stationId];
-            // We don't care about structures that aren't stations
+            var entity = __instance.factory.GetEntityData(_entityId);
+            var station = __instance.stationPool[entity.stationId];
             if (station == null)
-            {
-                s_logger.LogInfo("Station null?");
+			{
+                LogInfo("Couldn't find station? That shouldn't happen");
                 return;
-            }
+			}
 
-            s_logger.LogInfo("Constructed station");
-
-            // Collector stations don't have drones so we don't care about them
             if (station.isCollector)
                 return;
 
             if (station.isStellar)
             {
-				if (DepositDronesILS.Value)
-				{
-                    AddDrones(station, player, ILS_ITEMID);
+                if (DepositDronesILS.Value)
+                {
+                    AddDrones(station, player, _desc);
                 }
 
                 if (DepositVesselsILS.Value)
                 {
-                    AddShips(station, player, ILS_ITEMID);
+                    AddShips(station, player, _desc);
                 }
             }
             else
             {
                 if (DepositDronesPLS.Value)
                 {
-                    AddDrones(station, player, PLS_ITEMID);
+                    AddDrones(station, player, _desc);
                 }
             }
-		}
+        }
 
-        private static void AddDrones(StationComponent station, Player player, int stationTypeId)
+        private static void AddDrones(StationComponent station, Player player, PrefabDesc desc)
 		{
-            var desc = GetDesc(stationTypeId);
-            if (desc == null)
+            if (station == null || player == null || desc == null)
                 return;
 
             var droneMax = desc.stationMaxDroneCount;
@@ -126,10 +99,9 @@ namespace DSP_Mods
             station.idleDroneCount = drones;
         }
 
-        private static void AddShips(StationComponent station, Player player, int stationTypeId)
+        private static void AddShips(StationComponent station, Player player, PrefabDesc desc)
         {
-            var desc = GetDesc(stationTypeId);
-            if (desc == null)
+            if (station == null || player == null || desc == null)
                 return;
 
             var shipMax = desc.stationMaxShipCount;
@@ -143,19 +115,6 @@ namespace DSP_Mods
             station.idleShipCount = ships;
         }
 
-        private static PrefabDesc GetDesc(int id)
-		{
-            var item = LDB.items.Select(id);
-            if (item == null)
-                return null;
-
-            var desc = item.prefabDesc;
-            if (desc == null)
-                s_logger.LogInfo("Couldn't locate station description");
-
-            return desc;
-        }
-
         private static int RemoveItem(Player player, int count, int itemId)
 		{
             if (player == null || player.package == null)
@@ -163,6 +122,11 @@ namespace DSP_Mods
 
             var realCount = player.package.TakeItem(itemId, count);
             return realCount;
+		}
+
+        private static void LogInfo(string msg)
+		{
+            s_logger.LogInfo("AutoLogisticsDroneSetup : {msg}");
 		}
     }
 }
