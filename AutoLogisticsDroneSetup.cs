@@ -27,14 +27,22 @@ namespace DSP_Mods
         private static ConfigEntry<bool> DepositDronesPLS;
         private static ConfigEntry<bool> DepositDronesILS;
         private static ConfigEntry<bool> DepositVesselsILS;
+        private static ConfigEntry<int> DroneAmountPLS;
+        private static ConfigEntry<int> DroneAmountILS;
+        private static ConfigEntry<int> VesselAmountILS;
 
         private static ManualLogSource s_logger;
 
         public void Awake()
 		{
             AutoLogisticsDroneSetup.DepositDronesPLS = Config.Bind<bool>("Planetary Logistics", "Deposit Drones", true, "Whether drones should automatically be added to a newly created Planetary Logistics Station");
+            AutoLogisticsDroneSetup.DroneAmountPLS = Config.Bind<int>("Planetary Logistics", "Planetary Drone Amount", -1, "How many drones should be added to a newly created Planetary Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
+
             AutoLogisticsDroneSetup.DepositDronesILS = Config.Bind<bool>("Interstellar Logistics", "Deposit Drones", true, "Whether drones should automatically be added to a newly created Interstellar Logistics Station");
+            AutoLogisticsDroneSetup.DroneAmountILS = Config.Bind<int>("Interstellar Logistics", "Interstellar Drone Amount", -1, "How many drones should be added to a newly created Interstellar Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
+
             AutoLogisticsDroneSetup.DepositVesselsILS = Config.Bind<bool>("Interstellar Logistics", "Deposit Vessels", true, "Whether vessels should automatically be added to a newly created Interstellar Logistics Station");
+            AutoLogisticsDroneSetup.VesselAmountILS = Config.Bind<int>("Interstellar Logistics", "Interstellar Vessel Amount", -1, "How many vessels should be added to a newly created Interstellar Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
 
             Harmony.CreateAndPatchAll(typeof(AutoLogisticsDroneSetup));
             
@@ -66,24 +74,24 @@ namespace DSP_Mods
             {
                 if (DepositDronesILS.Value)
                 {
-                    AddDrones(station, player, _desc);
+                    AddDrones(station, player, _desc, DroneAmountILS.Value);
                 }
 
                 if (DepositVesselsILS.Value)
                 {
-                    AddShips(station, player, _desc);
+                    AddShips(station, player, _desc, VesselAmountILS.Value);
                 }
             }
             else
             {
                 if (DepositDronesPLS.Value)
                 {
-                    AddDrones(station, player, _desc);
+                    AddDrones(station, player, _desc, DroneAmountPLS.Value);
                 }
             }
         }
 
-        private static void AddDrones(StationComponent station, Player player, PrefabDesc desc)
+        private static void AddDrones(StationComponent station, Player player, PrefabDesc desc, int desiredAmount)
 		{
             if (station == null || player == null || desc == null)
                 return;
@@ -92,14 +100,17 @@ namespace DSP_Mods
             if (droneMax <= 0)
                 return;
 
-            var drones = RemoveItem(player, droneMax, DRONE_ITEMID);
+            if (desiredAmount < 0 || desiredAmount > droneMax)
+                desiredAmount = droneMax;
+
+            var drones = RemoveItem(player, desiredAmount, DRONE_ITEMID);
             if (drones <= 0)
                 return;
 
             station.idleDroneCount = drones;
         }
 
-        private static void AddShips(StationComponent station, Player player, PrefabDesc desc)
+        private static void AddShips(StationComponent station, Player player, PrefabDesc desc, int desiredAmount)
         {
             if (station == null || player == null || desc == null)
                 return;
@@ -108,7 +119,10 @@ namespace DSP_Mods
             if (shipMax <= 0)
                 return;
 
-            var ships = RemoveItem(player, shipMax, VESSEL_ITEMID);
+            if (desiredAmount < 0 || desiredAmount > shipMax)
+                desiredAmount = shipMax;
+
+            var ships = RemoveItem(player, desiredAmount, VESSEL_ITEMID);
             if (ships <= 0)
                 return;
 
