@@ -12,9 +12,37 @@ namespace DSP_Mods
 {
 	class StorageUtility
 	{
-		public bool UseInventory { get; set; }
-		public bool UseStorage { get; set; }
-		public bool UseStations { get; set; }
+		public enum Source
+		{
+			Inventory,
+			Storage,
+			Stations
+		}
+
+		private struct StorageSource
+		{
+			public Source Source { get; set; }
+			public int Priority { get; set; }
+		}
+
+		private List<StorageSource> Sources { get; set; }
+
+		public void AddSource(Source source, int priority)
+		{
+			if (priority < 0)
+				return;
+
+			if (Sources == null)
+				Sources = new List<StorageSource>();
+
+			Sources.Add(new StorageSource()
+			{
+				Source = source,
+				Priority = priority
+			});
+
+			Sources = Sources.OrderBy(s => s.Priority).ToList();
+		}
 
 		public int RemoveItems(int itemId, int desiredAmount)
 		{
@@ -24,27 +52,39 @@ namespace DSP_Mods
 			if (player == null || factory == null)
 				return 0;
 
-			int removed = 0;
+			if (desiredAmount <= 0)
+				return 0;
 
-			if (UseInventory && desiredAmount > 0)
+			int totalRemoved = 0;
+
+			// The list of sources is sorted by priority, so this will pull from them in the order the player requested
+			foreach (var s in Sources)
 			{
-				removed += RemoveFromPlayer(player, itemId, desiredAmount);
+				int removed = 0;
+
+				switch (s.Source)
+				{
+					case Source.Inventory:
+						removed = RemoveFromPlayer(player, itemId, desiredAmount);
+						break;
+
+					case Source.Storage:
+						removed = RemoveFromStorage(factory, itemId, desiredAmount);
+						break;
+
+					case Source.Stations:
+						removed = RemoveFromStations(factory, itemId, desiredAmount);
+						break;
+				}
+
+				totalRemoved += removed;
 				desiredAmount -= removed;
+
+				if (desiredAmount <= 0)
+					break;
 			}
 
-			if (UseStorage && desiredAmount > 0)
-			{
-				removed += RemoveFromStorage(factory, itemId, desiredAmount);
-				desiredAmount -= removed;
-			}
-
-			if (UseStations && desiredAmount > 0)
-			{
-				removed += RemoveFromStations(factory, itemId, desiredAmount);
-				desiredAmount -= removed;
-			}
-
-			return removed;
+			return totalRemoved;
 		}
 
 		private int RemoveFromPlayer(Player player, int itemId, int desiredAmount)
