@@ -92,7 +92,8 @@ namespace DSP_Mods
 			if (player == null || player.package == null)
 				return 0;
 
-			var amountRemoved = player.package.TakeItem(itemId, desiredAmount);
+			int inc = 0;
+			var amountRemoved = player.package.TakeItem(itemId, desiredAmount, out inc);
 			return amountRemoved;
 		}
 
@@ -106,7 +107,8 @@ namespace DSP_Mods
 				if (storage?.id != i)
 					continue;
 
-				amountRemoved += storage.TakeItem(itemId, desiredAmount - amountRemoved);
+				int inc = 0;
+				amountRemoved += storage.TakeItem(itemId, desiredAmount - amountRemoved, out inc);
 			}
 
 			return amountRemoved;
@@ -124,7 +126,8 @@ namespace DSP_Mods
 
 				int idRef = itemId;
 				int needed = desiredAmount - amountRemoved;
-				station.TakeItem(ref idRef, ref needed);
+				int inc = 0;
+				station.TakeItem(ref idRef, ref needed, out inc);
 
 				amountRemoved += needed;
 			}
