@@ -7,9 +7,16 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using Steamworks;
 
 namespace DSP_Mods
 {
+	public struct Item
+	{
+		public int Id { get; set; }
+		public string Name { get; set; }
+	}
+
 	class StorageUtility
 	{
 		public enum Source
@@ -44,7 +51,7 @@ namespace DSP_Mods
 			Sources = Sources.OrderBy(s => s.Priority).ToList();
 		}
 
-		public int RemoveItems(int itemId, int desiredAmount)
+		public int RemoveItems(Item item, int desiredAmount)
 		{
 			var player = GameMain.mainPlayer;
 			var factory = player?.factory;
@@ -65,15 +72,15 @@ namespace DSP_Mods
 				switch (s.Source)
 				{
 					case Source.Inventory:
-						removed = RemoveFromPlayer(player, itemId, desiredAmount);
+						removed = RemoveFromPlayer(player, item, desiredAmount);
 						break;
 
 					case Source.Storage:
-						removed = RemoveFromStorage(factory, itemId, desiredAmount);
+						removed = RemoveFromStorage(factory, item, desiredAmount);
 						break;
 
 					case Source.Stations:
-						removed = RemoveFromStations(factory, itemId, desiredAmount);
+						removed = RemoveFromStations(factory, item, desiredAmount);
 						break;
 				}
 
@@ -87,17 +94,21 @@ namespace DSP_Mods
 			return totalRemoved;
 		}
 
-		private int RemoveFromPlayer(Player player, int itemId, int desiredAmount)
+		private int RemoveFromPlayer(Player player, Item item, int desiredAmount)
 		{
 			if (player == null || player.package == null)
 				return 0;
 
 			int inc = 0;
-			var amountRemoved = player.package.TakeItem(itemId, desiredAmount, out inc);
+			var amountRemoved = player.package.TakeItem(item.Id, desiredAmount, out inc);
+
+			if (amountRemoved > 0)
+				DSP_Mods.Logger.Instance.LogInfo($"Removed {amountRemoved} {item.Name}{(amountRemoved == 1 ? "" : "s")} from player");
+
 			return amountRemoved;
 		}
 
-		private int RemoveFromStorage(PlanetFactory factory, int itemId, int desiredAmount)
+		private int RemoveFromStorage(PlanetFactory factory, Item item, int desiredAmount)
 		{
 			int amountRemoved = 0;
 
@@ -108,13 +119,17 @@ namespace DSP_Mods
 					continue;
 
 				int inc = 0;
-				amountRemoved += storage.TakeItem(itemId, desiredAmount - amountRemoved, out inc);
+				int result = storage.TakeItem(item.Id, desiredAmount - amountRemoved, out inc);
+				amountRemoved += result;
+
+				if (result > 0)
+					DSP_Mods.Logger.Instance.LogInfo($"Removed {result} {item.Name}{(amountRemoved == 1 ? "" : "s")} from storage");
 			}
 
 			return amountRemoved;
 		}
 
-		private int RemoveFromStations(PlanetFactory factory, int itemId, int desiredAmount)
+		private int RemoveFromStations(PlanetFactory factory, Item item, int desiredAmount)
 		{
 			int amountRemoved = 0;
 
@@ -124,12 +139,15 @@ namespace DSP_Mods
 				if (station?.id != i)
 					continue;
 
-				int idRef = itemId;
+				int idRef = item.Id;
 				int needed = desiredAmount - amountRemoved;
 				int inc = 0;
 				station.TakeItem(ref idRef, ref needed, out inc);
 
 				amountRemoved += needed;
+
+				if (needed > 0)
+					DSP_Mods.Logger.Instance.LogInfo($"Removed {needed} {item.Name}{(amountRemoved == 1 ? "" : "s")} from station");
 			}
 
 			return amountRemoved;
