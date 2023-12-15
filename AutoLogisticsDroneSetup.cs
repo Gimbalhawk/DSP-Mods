@@ -16,60 +16,28 @@ namespace DSP_Mods
     {
         public const string pluginGuid = "gimbalhawk.dsp.autoshuttlesetup";
         public const string pluginName = "AutoShuttleSetup";
-        public const string pluginVersion = "1.5.0";
+        public const string pluginVersion = "1.6.0";
 
         public static Item Drone = new Item(){ Id = 5001, Name = "Drone" };
         public static Item Vessel = new Item(){ Id = 5002, Name = "Vessel" };
         public static Item Bot = new Item(){ Id = 5003, Name = "Bot" };
-        
-        private static ConfigEntry<int> InventoryPriority;
-        private static ConfigEntry<int> StoragePriority;
-        private static ConfigEntry<int> StationsPriority;
 
-        private static ConfigEntry<bool> DepositDronesPLS;
-        private static ConfigEntry<bool> DepositDronesILS;
-        private static ConfigEntry<bool> DepositVesselsILS;
-        private static ConfigEntry<bool> DepositBots;
-        private static ConfigEntry<int> DroneAmountPLS;
-        private static ConfigEntry<int> DroneAmountILS;
-        private static ConfigEntry<int> VesselAmountILS;
-        private static ConfigEntry<int> BotAmount;
-
-        private static StorageUtility StorageUtility;
+        private static StorageUtility StorageUtility { get; set; }
+        private static BuildMenuUIAddOn UI { get; set; }
 
         public void Awake()
 		{
-            AutoLogisticsDroneSetup.InventoryPriority = Config.Bind<int>("Storage", "Inventory Priority", 1, "The priority of selecting from the player inventory. Lower numbers take precendence. Set to a negative number to disable");
-            AutoLogisticsDroneSetup.StoragePriority = Config.Bind<int>("Storage", "Storage Priority", 2, "The priority of selecting from storage chests. Lower numbers take precendence. Set to a negative number to disable");
-            AutoLogisticsDroneSetup.StationsPriority = Config.Bind<int>("Storage", "Stations Priority", 3, "The priority of selecting from stations. Lower numbers take precendence. Set to a negative number to disable");
+            ModConfig.InitConfig(Config);
 
-            AutoLogisticsDroneSetup.DepositDronesPLS = Config.Bind<bool>("Planetary Logistics", "Deposit Drones", true, "Whether drones should automatically be added to a newly created Planetary Logistics Station");
-            AutoLogisticsDroneSetup.DroneAmountPLS = Config.Bind<int>("Planetary Logistics", "Planetary Drone Amount", -1, "How many drones should be added to a newly created Planetary Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
-
-            AutoLogisticsDroneSetup.DepositDronesILS = Config.Bind<bool>("Interstellar Logistics", "Deposit Drones", true, "Whether drones should automatically be added to a newly created Interstellar Logistics Station");
-            AutoLogisticsDroneSetup.DroneAmountILS = Config.Bind<int>("Interstellar Logistics", "Interstellar Drone Amount", -1, "How many drones should be added to a newly created Interstellar Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
-
-            AutoLogisticsDroneSetup.DepositVesselsILS = Config.Bind<bool>("Interstellar Logistics", "Deposit Vessels", true, "Whether vessels should automatically be added to a newly created Interstellar Logistics Station");
-            AutoLogisticsDroneSetup.VesselAmountILS = Config.Bind<int>("Interstellar Logistics", "Interstellar Vessel Amount", -1, "How many vessels should be added to a newly created Interstellar Logistics Station. Numbers less than 0 or greater than the max are treated as the normal drone maximum");
-            
-            AutoLogisticsDroneSetup.DepositBots = Config.Bind<bool>("Logistics Bots", "Deposit Bots", true, "Whether bots should automatically be added to a newly created logistics distrubution ports");
-            AutoLogisticsDroneSetup.BotAmount = Config.Bind<int>("Logistics Bots", "Bots Amount", -1, "How many bots should be added to a newly created distribution port. Numbers less than 0 or greater than the max are treated as the normal bot maximum");
+            StorageUtility = new StorageUtility();
 
             Harmony.CreateAndPatchAll(typeof(AutoLogisticsDroneSetup));
+            Harmony.CreateAndPatchAll(typeof(ModConfigWindow));
 
             DSP_Mods.Logger.Init(Logger, "AutoLogisticsDroneSetup");
-            LoadSettings();
         }
 
-        private static void LoadSettings()
-        {
-			StorageUtility = new StorageUtility();
-			StorageUtility.AddSource(StorageUtility.Source.Inventory, InventoryPriority.Value);
-			StorageUtility.AddSource(StorageUtility.Source.Storage, StoragePriority.Value);
-			StorageUtility.AddSource(StorageUtility.Source.Stations, StationsPriority.Value);
-		}
-
-        [HarmonyPostfix, HarmonyPatch(typeof(PlanetTransport), "NewStationComponent")]
+        [HarmonyPostfix, HarmonyPatch(typeof(PlanetTransport), nameof(PlanetTransport.NewStationComponent))]
         public static void NewStationComponent_PostFix(PlanetTransport __instance, int _entityId, int _pcId, PrefabDesc _desc)
 		{
             var player = GameMain.mainPlayer;
@@ -93,22 +61,22 @@ namespace DSP_Mods
             if (station.isStellar)
             {
 				DSP_Mods.Logger.Instance.LogInfo("Interstellar logistics station built");
-                if (DepositDronesILS.Value)
+                if (ModConfig.DepositDronesILS.Value)
 				{
-                    AddDrones(station, _desc, StorageUtility, DroneAmountILS.Value);
+                    AddDrones(station, _desc, StorageUtility, ModConfig.DroneAmountILS.Value);
                 }
 
-                if (DepositVesselsILS.Value)
+                if (ModConfig.DepositVesselsILS.Value)
                 {
-                    AddShips(station, _desc, StorageUtility, VesselAmountILS.Value);
+                    AddShips(station, _desc, StorageUtility, ModConfig.VesselAmountILS.Value);
                 }
             }
             else
             {
 				DSP_Mods.Logger.Instance.LogInfo("Planetary logistics station built");
-				if (DepositDronesPLS.Value)
+				if (ModConfig.DepositDronesPLS.Value)
                 {
-                    AddDrones(station, _desc, StorageUtility, DroneAmountPLS.Value);
+                    AddDrones(station, _desc, StorageUtility, ModConfig.DroneAmountPLS.Value);
                 }
             }
         }
@@ -133,9 +101,9 @@ namespace DSP_Mods
 
 			DSP_Mods.Logger.Instance.LogInfo("Logistics dispenser built");
             
-            if (DepositBots.Value)
+            if (ModConfig.DepositBots.Value)
             {
-                AddBots(dispenser, _desc, StorageUtility, BotAmount.Value);
+                AddBots(dispenser, _desc, StorageUtility, ModConfig.BotAmount.Value);
             }
 		}
 
@@ -203,6 +171,41 @@ namespace DSP_Mods
                 return;
 
             dispenser.idleCourierCount = bots;
+        }
+
+		[HarmonyPostfix, HarmonyPatch(typeof(UIBuildMenu), nameof(UIBuildMenu.OnCategoryButtonClick))]
+		public static void OnCategoryButtonClick_Postfix(UIBuildMenu __instance)
+        {
+            var uiBuildMenu = __instance;
+
+            // We only want to modify the logistics buildings category
+            if (uiBuildMenu.currentCategory != 6)
+            {
+                if (UI != null)
+                {
+                    UI.Hide();
+                }
+
+                return;
+            }
+
+            if (UI == null)
+            {
+                UI = BuildMenuUIAddOn.InitUI(uiBuildMenu);
+            }
+
+            if (UI != null)
+            {
+                UI.Show();
+            }
+        }
+
+        public void OnGUI()
+        {
+            if (ModConfigWindow.Visible)
+            {
+                ModConfigWindow.OnGUI();
+            }
         }
     }
 }

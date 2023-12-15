@@ -32,23 +32,28 @@ namespace DSP_Mods
 			public int Priority { get; set; }
 		}
 
-		private List<StorageSource> Sources { get; set; }
+		// Get the list of valid storage sources sorted by priority
+		private IEnumerable<StorageSource> GetStorageSources()
+		{
+			var sources = new List<StorageSource>();
 
-		public void AddSource(Source source, int priority)
+			AddSource(sources, StorageUtility.Source.Inventory, ModConfig.InventoryPriority.Value);
+			AddSource(sources, StorageUtility.Source.Storage, ModConfig.StoragePriority.Value);
+			AddSource(sources, StorageUtility.Source.Stations, ModConfig.StationsPriority.Value);
+
+			return sources.OrderBy(s => s.Priority).ToList();
+		}
+
+		private void AddSource(List<StorageSource> sources, Source source, int priority)
 		{
 			if (priority < 0)
 				return;
 
-			if (Sources == null)
-				Sources = new List<StorageSource>();
-
-			Sources.Add(new StorageSource()
+			sources.Add(new StorageSource()
 			{
 				Source = source,
 				Priority = priority
 			});
-
-			Sources = Sources.OrderBy(s => s.Priority).ToList();
 		}
 
 		public int RemoveItems(Item item, int desiredAmount)
@@ -64,8 +69,9 @@ namespace DSP_Mods
 
 			int totalRemoved = 0;
 
+			var sources = GetStorageSources();
 			// The list of sources is sorted by priority, so this will pull from them in the order the player requested
-			foreach (var s in Sources)
+			foreach (var s in sources)
 			{
 				int removed = 0;
 
@@ -103,7 +109,7 @@ namespace DSP_Mods
 			var amountRemoved = player.package.TakeItem(item.Id, desiredAmount, out inc);
 
 			if (amountRemoved > 0)
-				DSP_Mods.Logger.Instance.LogInfo($"Removed {amountRemoved} {item.Name}{(amountRemoved == 1 ? "" : "s")} from player");
+				Logger.Instance.LogInfo($"Removed {amountRemoved} {item.Name}{(amountRemoved == 1 ? "" : "s")} from player");
 
 			return amountRemoved;
 		}
@@ -123,7 +129,7 @@ namespace DSP_Mods
 				amountRemoved += result;
 
 				if (result > 0)
-					DSP_Mods.Logger.Instance.LogInfo($"Removed {result} {item.Name}{(amountRemoved == 1 ? "" : "s")} from storage");
+					Logger.Instance.LogInfo($"Removed {result} {item.Name}{(amountRemoved == 1 ? "" : "s")} from storage");
 			}
 
 			return amountRemoved;
@@ -147,7 +153,7 @@ namespace DSP_Mods
 				amountRemoved += needed;
 
 				if (needed > 0)
-					DSP_Mods.Logger.Instance.LogInfo($"Removed {needed} {item.Name}{(amountRemoved == 1 ? "" : "s")} from station");
+					Logger.Instance.LogInfo($"Removed {needed} {item.Name}{(amountRemoved == 1 ? "" : "s")} from station");
 			}
 
 			return amountRemoved;
