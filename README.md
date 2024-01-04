@@ -14,6 +14,10 @@ Storage priorities: Changes the order that the mod looks for drones between your
 Changelist
 --------
 
+### 1.7.0
+
+* Tweaked code to pull from the end of your inventory, not the start. Should be a little nicer if you don't use DSPAutoSorter. Also allowed it to pull from the player's logistic storage and made it work with architect mode from CheatEnabler
+
 ### 1.6.0
 
 * Added a config menu to let you change your settings while you play
