@@ -19,6 +19,8 @@ namespace DSP_Mods
 
 	class StorageUtility
 	{
+		private PlayerPackageUtility playerPackageUtility = null;
+
 		public enum Source
 		{
 			Inventory,
@@ -105,8 +107,13 @@ namespace DSP_Mods
 			if (player == null || player.package == null)
 				return 0;
 
+			if (playerPackageUtility == null)
+				playerPackageUtility = new PlayerPackageUtility(player);
+
+			int id = item.Id;
 			int inc = 0;
-			var amountRemoved = player.package.TakeItem(item.Id, desiredAmount, out inc);
+			int amountRemoved = desiredAmount;
+			playerPackageUtility.TryTakeItemFromAllPackages(ref id, ref amountRemoved, out inc, true);
 
 			if (amountRemoved > 0)
 				Logger.Instance.LogInfo($"Removed {amountRemoved} {item.Name}{(amountRemoved == 1 ? "" : "s")} from player");
@@ -124,12 +131,14 @@ namespace DSP_Mods
 				if (storage?.id != i)
 					continue;
 
+				int id = item.Id;
 				int inc = 0;
-				int result = storage.TakeItem(item.Id, desiredAmount - amountRemoved, out inc);
-				amountRemoved += result;
+				int count = desiredAmount - amountRemoved;
+				storage.TakeTailItems(ref id, ref count, out inc);
+				amountRemoved += count;
 
-				if (result > 0)
-					Logger.Instance.LogInfo($"Removed {result} {item.Name}{(amountRemoved == 1 ? "" : "s")} from storage");
+				if (count > 0)
+					Logger.Instance.LogInfo($"Removed {count} {item.Name}{(count == 1 ? "" : "s")} from storage");
 			}
 
 			return amountRemoved;
@@ -153,7 +162,7 @@ namespace DSP_Mods
 				amountRemoved += needed;
 
 				if (needed > 0)
-					Logger.Instance.LogInfo($"Removed {needed} {item.Name}{(amountRemoved == 1 ? "" : "s")} from station");
+					Logger.Instance.LogInfo($"Removed {needed} {item.Name}{(needed == 1 ? "" : "s")} from station");
 			}
 
 			return amountRemoved;
