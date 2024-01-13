@@ -16,7 +16,7 @@ namespace DSP_Mods
 	{
 		public const string pluginGuid = "gimbalhawk.dsp.autoshuttlesetup";
 		public const string pluginName = "AutoShuttleSetup";
-		public const string pluginVersion = "1.7.0";
+		public const string pluginVersion = "1.8.0";
 
 		public static Item Drone = new Item() { Id = 5001, Name = "Drone" };
 		public static Item Vessel = new Item() { Id = 5002, Name = "Vessel" };

@@ -19,7 +19,7 @@ namespace DSP_Mods
 
 	class StorageUtility
 	{
-		private PlayerPackageUtility playerPackageUtility = null;
+		private PlayerPackageUtility PlayerPackageUtility = null;
 
 		public enum Source
 		{
@@ -107,13 +107,13 @@ namespace DSP_Mods
 			if (player == null || player.package == null)
 				return 0;
 
-			if (playerPackageUtility == null)
-				playerPackageUtility = new PlayerPackageUtility(player);
+			if (PlayerPackageUtility == null || PlayerPackageUtility.player != player)
+				PlayerPackageUtility = new PlayerPackageUtility(player);
 
 			int id = item.Id;
 			int inc = 0;
 			int amountRemoved = desiredAmount;
-			playerPackageUtility.TryTakeItemFromAllPackages(ref id, ref amountRemoved, out inc, true);
+			PlayerPackageUtility.TryTakeItemFromAllPackages(ref id, ref amountRemoved, out inc, true);
 
 			if (amountRemoved > 0)
 				Logger.Instance.LogInfo($"Removed {amountRemoved} {item.Name}{(amountRemoved == 1 ? "" : "s")} from player");
